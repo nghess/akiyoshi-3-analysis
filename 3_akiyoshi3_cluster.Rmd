@@ -1,7 +1,7 @@
 ---
-title: "Akiyoshi II Hierarchical Clustering"
+title: "Akiyoshi III Hierarchical Clustering"
 author: "Nathan Gonzales-Hess"
-date: "6/27/2022"
+date: "11/11/2022"
 output: html_document
 ---
 
