@@ -1,0 +1,119 @@
+---
+title: "Akiyoshi II Basic Plots"
+author: "Nathan Gonzales-Hess"
+date: "6/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rio)
+library(sjPlot)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+# Load CSV Names
+files <-
+  list.files(
+    path = "data_passed/",
+    pattern = ".csv",
+    full.names = TRUE,
+    recursive = FALSE)
+
+csv_list <- NULL
+
+for (i in 1:length(files)) {
+  csv <- read_csv(files[i], show_col_types = FALSE)
+  csv_list[[i]] <- csv
+}
+```
+
+```{r warning=FALSE}
+master_df <- bind_rows(csv_list[1:length(csv_list)])
+master_df$descriptor <- as.factor(master_df$descriptor)
+master_df$speed <- as.factor(master_df$speed)
+master_df$beta <- as.factor(master_df$beta)
+master_df$fD_f <- as.factor(master_df$fD_f)
+master_df$fD_c <- as.numeric(master_df$fD_c)
+master_df$ID <- as.factor(master_df$ID)
+```
+
+```{r}
+ak3_mdl <- lm(response ~ fD_f*descriptor, data = master_df)
+anova(ak3_mdl)
+```
+```{r}
+ak3_mdl
+
+```
+
+```{r}
+# Trying to replicate something like Homework 4 plot
+df1_plot <- plot_model(ak3_mdl, type = "emm", terms = c("fD_f", "descriptor"),position=position_stack())+
+                       geom_line(linetype="solid", size = 1, alpha = .3) +
+                       labs(x = "3d Fractal Beta Value", y = "Participant Response")+
+                       ggtitle("Participant Responses for Dynamic Fractals Between Beta 2.5 and 5.5")+
+                       theme_minimal() +
+                       theme(text = element_text(size=15), 
+                             plot.title = element_text(hjust = 0.5, margin = margin(t=20, b=20)),
+                             plot.caption = element_text(hjust = 0, face = "italic"),
+                             axis.title.x = element_text(margin = margin(t=20, b=10)),
+                             axis.title.y = element_text(margin = margin(r=20)))
+df1_plot
+```
+
+
+```{r}
+comp_df <- NULL
+relx_df <- NULL
+natr_df <- NULL
+intr_df <- NULL
+appl_df <- NULL
+
+comp_mdl <- NULL
+relx_mdl <- NULL
+natr_mdl <- NULL
+intr_mdl <- NULL
+appl_mdl <- NULL
+
+
+descriptors <- c("complex", "relaxing", "natural", "interesting", "appealing")
+desc_df <- list(comp_df, relx_df, natr_df, intr_df, appl_df)
+models <-  list(comp_mdl, relx_mdl, natr_mdl, intr_mdl, appl_mdl)
+
+for (i in 1:5){
+  desc_df[[i]] <- master_df[master_df$descriptor == descriptors[i],]
+  models[[i]] <- lm(response ~ fD_f*speed, data = desc_df[[i]])
+}
+
+```
+
+```{r warning=FALSE, results='asis', echo=FALSE, message=FALSE}
+for (i in 1:5){
+plt <- plot_model(models[[i]], type="pred", terms = c("fD_f", "speed")) +          
+        labs(title = paste0("Response Predicted From fD and Animation Speed (\"", ... = str_to_title(descriptors[i]), "\" Descriptor)"),
+        x = "Measured Fractal D", y = "Participant Response") + geom_line(linetype = "solid", alpha=.5) +
+        theme(text = element_text(size=15), plot.title = element_text(hjust = 0.5, margin = margin(t=20, b=20)),
+                                             plot.caption = element_text(hjust = 0, face = "italic"),
+                                             axis.title.x = element_text(margin = margin(t=30, b=10)),
+                                             axis.title.y = element_text(margin = margin(r=30))) + theme_minimal()
+print(plt)
+}
+```
+
+
+```{r warning=FALSE, results='asis', echo=FALSE, message=FALSE}
+for (i in 1:5){
+plt <- ggplot(desc_df[[i]], aes(x=fD_f, y=response)) + 
+       geom_point(alpha=.005, color='blue')
+
+print(plt)
+#print(anova(models[[i]]))
+}
+```
+
+
+
+

@@ -1,0 +1,102 @@
+---
+title: "Akiyoshi III CSV Builder"
+author: "Nathan Gonzales-Hess"
+date: "11/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rio)
+library(stringr)
+```
+
+```{r message=FALSE, warning=FALSE}
+# THis is for RAW DATA ONLY!
+
+# Load CSV Names
+files <-
+  list.files(
+    path = "data/",
+    pattern = ".csv",
+    full.names = TRUE,
+    recursive = FALSE)
+
+#Block ranges for each condition
+block <- list(c(10:84), c(87:161), c(164:238), c(241:315), c(318:392)) # Trial rows
+ak3_data <- NULL
+
+seed <- NULL
+speeds <- NULL
+```
+
+```{r warning=FALSE}
+for (i in 1:length(files)){
+  
+  #Load current CSV
+  csv_cleaner <- read_csv(files[i], show_col_types = FALSE)
+  csv_cleaner <- csv_cleaner[c("stimulus", "response", "rt", "descriptor")]  #Remove useless columns
+  csv_cleaner <- csv_cleaner[-c(1:7, 83:84, 160:161, 237:238, 314:315, 391:393),]  #Trim useless rows
+  csv_cleaner$speed <- csv_cleaner$stimulus
+  
+  csv_cleaner$stimulus <- gsub(".*_", "", csv_cleaner$stimulus)  #Remove URL and seed from stimulus name
+  csv_cleaner$stimulus <- gsub("\\(.*", "", csv_cleaner$stimulus)  #Remove file extension for stimulus name
+  csv_cleaner$stimulus <- gsub("img/", "", csv_cleaner$stimulus)  #Remove file extension for stimulus name
+  
+  # Get seeds from stimulus path and add seeds column
+  for (x in 1:nrow(csv_cleaner)){
+    seed[x] = substr(csv_cleaner$stimulus[x], 1, 3)
+  }
+  csv_cleaner$seed <- seed
+  
+  # Ugly regex for beta
+  names(csv_cleaner)[1] <- "beta"
+  csv_cleaner$beta <- gsub("^/", "", csv_cleaner$beta)  #Remove the first slash
+  csv_cleaner$beta <- gsub("\\d{3}", "", csv_cleaner$beta)  #Remove the seed
+  csv_cleaner$beta <- gsub("^/", "", csv_cleaner$beta)  #Remove the first slash
+  csv_cleaner$beta <- gsub("(?<=/).*", "", csv_cleaner$beta, perl = TRUE)  #Remove everything behind the slash
+  csv_cleaner$beta <- gsub("/", "", csv_cleaner$beta)  #Remove the final slash
+
+  # Ugly regex for speed
+  csv_cleaner$speed <- gsub("^/", "", csv_cleaner$speed)  #Remove the first slash
+  csv_cleaner$speed <- gsub("^\\D{3}", "", csv_cleaner$speed)  #Remove the seed
+  csv_cleaner$speed <- gsub("^/\\d{3}/", "", csv_cleaner$speed)  #Remove the beta
+  csv_cleaner$speed <- gsub("^[^/]*", "", csv_cleaner$speed, perl = TRUE)  #Remove the slash
+  csv_cleaner$speed <- gsub("^/", "", csv_cleaner$speed)  #Remove the first slash
+  csv_cleaner$speed <- gsub("(?<=/).*", "", csv_cleaner$speed, perl = TRUE)  #Remove everything behind the slash
+  csv_cleaner$speed <- gsub("/", "", csv_cleaner$speed, perl = TRUE)  #Remove slash
+  
+  # Add ID
+  csv_cleaner$ID <- i
+  
+  # Add fD columns
+  csv_cleaner$fD_c <- "empty"
+  csv_cleaner$fD_f <- "empty"
+  fd_f <- c("D~1.8", "D~1.6", "D~1.4", "D~1.2", "D~1.0")
+  fd_c <- c(1.8, 1.6, 1.4, 1.2, 1.0)
+  betas <- c(2.5, 3.5, 4, 4.5, 5.5)
+  
+  for (k in 1:5){
+    for (v in 1:nrow(csv_cleaner)){
+      if(csv_cleaner$beta[v] == betas[k]){
+        csv_cleaner$fD_c[v] <- fd_c[k]
+        csv_cleaner$fD_f[v] <- fd_f[k]
+      }
+    }
+  }
+
+  
+  # Clamp responses between 0 and 100
+  csv_cleaner$response <- as.numeric(csv_cleaner$response)
+  csv_cleaner$response[csv_cleaner$response >= 100] <- 100
+  csv_cleaner$response[csv_cleaner$response <= 0] <- 0
+
+  #Save cleaned CSV
+  write.csv(csv_cleaner, file = paste0("data_clean/", i, "_ak3.csv"), row.names = FALSE)
+  print(paste("File", i))
+}
+```
+
+

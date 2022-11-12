@@ -1,0 +1,101 @@
+---
+title: "Akiyoshi II Participant Weeder"
+author: "Nathan Gonzales-Hess"
+date: "6/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rio)
+library(sjPlot)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+# Load CSV Names
+files <-
+  list.files(
+    path = "data_passed/",
+    pattern = ".csv",
+    full.names = TRUE,
+    recursive = FALSE)
+
+csv_list <- NULL
+
+for (i in 1:length(files)) {
+  csv <- read_csv(files[i], show_col_types = FALSE)
+  csv_list[[i]] <- csv
+}
+```
+
+```{r warning=FALSE}
+master_df <- bind_rows(csv_list[1:length(csv_list)])
+master_df$descriptor <- as.factor(master_df$descriptor)
+master_df$speed <- as.factor(master_df$speed)
+master_df$beta <- as.factor(master_df$beta)
+master_df$fD_f <- as.factor(master_df$fD_f)
+master_df$fD_c <- as.numeric(master_df$fD_c)
+master_df$ID <- as.factor(master_df$ID)
+```
+
+
+
+```{r}
+comp_df <- NULL
+relx_df <- NULL
+natr_df <- NULL
+intr_df <- NULL
+appl_df <- NULL
+desc_df <- list(comp_df, relx_df, natr_df, intr_df, appl_df)
+
+descriptors <- c("complex", "relaxing", "natural", "interesting", "appealing")
+
+for (i in 1:5){
+  desc_df[[i]] <- master_df[master_df$descriptor == descriptors[i],]
+}
+```
+
+
+```{r}
+#Grab 'complex' trials only
+complex_all <- na.omit(desc_df[[1]])
+```
+
+```{r warning=FALSE}
+complex_models = NULL
+weeder <- NULL
+passed <- NULL
+ss_df <- data.frame(matrix(nrow=0,ncol = 2))
+```
+
+
+```{r warning=FALSE, message=FALSE}
+# Plot individual participants 
+
+# Grab trials for one descriptor only
+
+# Participant number in list
+id = 20
+composite = NULL
+
+for (i in 1:5){
+desc_all <- na.omit(desc_df[[i]])
+desc_single <- desc_all[desc_all$ID == id,]
+agg <- aggregate(desc_single, by=list(desc_single$fD_c), mean)
+
+plt <- ggplot() +
+  geom_point(aes(x=as.numeric(fD_f), y=response, color=speed), width = 0, size=1, alpha=.3, data=desc_single) +  
+  geom_line(stat="smooth", aes(x=as.numeric(fD_f), y=response, color=speed),, method = lm, data=desc_single, alpha=.9) +
+  #geom_point(aes(y=agg$response, x=c(1:5)), alpha=.5, color="red") +
+  #geom_line(aes(y=agg$response, x=c(1:5)), alpha=.5) +
+  scale_x_discrete(limits=c("1.0","1.2","1.4","1.6","1.8")) +
+  labs(x="Fractal Dimension", y="Response",
+       title=paste("Subject", passed[id], " - ", str_to_title(desc_all$descriptor[1]), "Descriptor")) +
+  ylim(0,100) + theme_classic()
+
+print(plt)
+}
+```
+
